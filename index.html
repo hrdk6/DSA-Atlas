@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>DSA Atlas</title>
+<meta name="description" content="A visual, interactive DSA study guide in Python: lessons, 3D visualizers, a step-through Python visualizer, and guided solutions for LeetCode 75 and Top Interview 150.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/viz.css">
+<script>try{var t=localStorage.getItem('dsa-theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
+</head>
+<body>
+<div class="app" id="app">
+  <aside class="sidebar" id="sidebar" aria-label="Guide contents"></aside>
+  <div class="scrim" id="scrim"></div>
+  <div class="main">
+    <header class="topbar">
+      <button class="icon-btn tb-menu" id="menuBtn" aria-label="Open contents"></button>
+      <nav class="crumbs" id="crumbs" aria-label="Breadcrumb"></nav>
+      <div class="tb-actions">
+        <div class="seg" id="modeSeg" role="group" aria-label="Solution mode">
+          <button type="button" data-mode="learn" title="Show every explanation and solution">Learn</button>
+          <button type="button" data-mode="practice" title="Hide solutions behind hints so you can try first">Practice</button>
+        </div>
+        <button class="icon-btn" id="themeBtn" aria-label="Switch color theme"></button>
+      </div>
+    </header>
+    <main id="view" class="view" tabindex="-1"></main>
+  </div>
+</div>
+<div id="modal-root"></div>
+
+<!-- 3D engine (three.js r128 + orbit controls). The guide still works without them. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+<script src="js/core.js"></script>
+<script src="js/viz3d/base.js"></script>
+<script src="js/viz3d/array.js"></script>
+<script src="js/viz3d/linkedlist.js"></script>
+<script src="js/viz3d/stackqueue.js"></script>
+<script src="js/viz3d/hashtable.js"></script>
+<script src="js/viz3d/bst.js"></script>
+<script src="js/viz3d/heap.js"></script>
+<script src="js/viz3d/graph.js"></script>
+<script src="js/viz3d/trie.js"></script>
+<script src="js/viz3d/dpgrid.js"></script>
+<script src="js/viz3d/sorting.js"></script>
+<script src="js/viz2d/player.js"></script>
+<script src="js/viz2d/arrays.js"></script>
+<script src="js/viz2d/grid.js"></script>
+<script src="js/viz2d/dp.js"></script>
+<script src="js/viz2d/recursion.js"></script>
+<script src="js/viz2d/misc.js"></script>
+<script src="js/py/runner.js"></script>
+<script src="js/py/debugger.js"></script>
+<script src="data/pyruntime.js"></script>
+<script src="data/problems.js"></script>
+<script src="data/lessons/01-start.js"></script>
+<script src="data/lessons/02-foundations.js"></script>
+<script src="data/lessons/03-structures-a.js"></script>
+<script src="data/lessons/04-structures-b.js"></script>
+<script src="data/lessons/05-patterns-a.js"></script>
+<script src="data/lessons/06-patterns-b.js"></script>
+<script src="data/lessons/07-toolkit.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
