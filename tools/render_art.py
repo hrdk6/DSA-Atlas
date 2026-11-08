@@ -1,10 +1,15 @@
-"""Render the DSA Atlas card art with Blender (headless).
+"""Render the DSA Atlas card art with Blender.
 
+Headless (fast EEVEE, empty factory scene):
     "C:\\Program Files\\Blender Foundation\\Blender 5.2\\blender.exe" -b --factory-startup -P tools/render_art.py
 
+Live, inside an open Blender (Cycles + soft contact shadows), from the Python console:
+    ns = {"__name__": "dsa_art", "__file__": r"<path>/tools/render_art.py"}
+    exec(open(ns["__file__"]).read(), ns); ns["setup"](live=True); ns["render_all"]()
+Live mode builds everything in its own scene, "DSA Atlas Art", and never touches other scenes.
+
 Builds one small 3D scene per chapter (and one per study plan) out of the same
-glossy primitives the in-browser 3D figures use, and renders transparent PNGs
-into assets/art/. Starts from an empty factory scene, so no user files are touched.
+glossy primitives the in-browser 3D figures use, and renders transparent PNGs into assets/art/.
 """
 import math
 import os
@@ -17,6 +22,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, 'assets', 'art')
 os.makedirs(OUT, exist_ok=True)
 ONLY = set(sys.argv[sys.argv.index('--') + 1:]) if '--' in sys.argv else set()
+ART_SCENE = 'DSA Atlas Art'
 
 PAL = {
     'ink': '#4d8dff', 'deep': '#2d5fd0', 'accent': '#ffad3b', 'mint': '#29c993', 'violet': '#9677ff',
@@ -24,40 +30,69 @@ PAL = {
     'gold': '#ffb84d', 'pale': '#a8caff',
 }
 
-bpy.ops.wm.read_factory_settings(use_empty=True)
-scene = bpy.context.scene
-for engine in ('BLENDER_EEVEE', 'BLENDER_EEVEE_NEXT', 'CYCLES'):
-    try:
-        scene.render.engine = engine
-        break
-    except TypeError:
-        continue
-print('engine:', scene.render.engine)
-if scene.render.engine == 'CYCLES':
-    scene.cycles.samples = 48
-    scene.cycles.use_denoising = True
-else:
-    try:
-        scene.eevee.taa_render_samples = 48
-    except AttributeError:
-        pass
-    for attr in ('use_raytracing', 'use_gtao', 'use_shadows'):
-        if hasattr(scene.eevee, attr):
-            setattr(scene.eevee, attr, True)
-try:
-    scene.view_settings.view_transform = 'Standard'
-except TypeError:
-    pass
-scene.render.film_transparent = True
-scene.render.image_settings.file_format = 'PNG'
-scene.render.image_settings.color_mode = 'RGBA'
+scene = cam = cam_data = None
 
-world = bpy.data.worlds.new('World')
-scene.world = world
-world.use_nodes = True
-bg = next(n for n in world.node_tree.nodes if n.type == 'BACKGROUND')
-bg.inputs[0].default_value = (0.20, 0.23, 0.32, 1)
-bg.inputs[1].default_value = 0.9
+
+def setup(live=False, engine=None, samples=64):
+    """Prepare a scene with world, lights and an orthographic camera. Returns the scene."""
+    global scene, cam, cam_data
+    if live:
+        scene = bpy.data.scenes.get(ART_SCENE) or bpy.data.scenes.new(ART_SCENE)
+        for win in bpy.context.window_manager.windows:
+            win.scene = scene                     # show it; the user's own scenes stay untouched
+    else:
+        bpy.ops.wm.read_factory_settings(use_empty=True)
+        scene = bpy.context.scene
+    wanted = engine or ('CYCLES' if live else 'BLENDER_EEVEE')
+    for eng in (wanted, 'BLENDER_EEVEE', 'BLENDER_EEVEE_NEXT', 'CYCLES'):
+        try:
+            scene.render.engine = eng
+            break
+        except TypeError:
+            continue
+    if scene.render.engine == 'CYCLES':
+        scene.cycles.samples = samples
+        scene.cycles.use_denoising = True
+        prefs = bpy.context.preferences.addons.get('cycles')
+        if prefs and getattr(prefs.preferences, 'compute_device_type', 'NONE') != 'NONE':
+            scene.cycles.device = 'GPU'           # only if the user already enabled a GPU
+    else:
+        try:
+            scene.eevee.taa_render_samples = samples
+        except AttributeError:
+            pass
+        for attr in ('use_raytracing', 'use_gtao', 'use_shadows'):
+            if hasattr(scene.eevee, attr):
+                setattr(scene.eevee, attr, True)
+    try:
+        scene.view_settings.view_transform = 'Standard'
+    except TypeError:
+        pass
+    scene.render.film_transparent = True
+    scene.render.image_settings.file_format = 'PNG'
+    scene.render.image_settings.color_mode = 'RGBA'
+
+    world = bpy.data.worlds.get('DSA Art World') or bpy.data.worlds.new('DSA Art World')
+    scene.world = world
+    world.use_nodes = True
+    bg = next(n for n in world.node_tree.nodes if n.type == 'BACKGROUND')
+    bg.inputs[0].default_value = (0.20, 0.23, 0.32, 1)
+    bg.inputs[1].default_value = 0.9
+
+    for o in list(scene.objects):                 # rebuild lights and camera cleanly
+        if o.type in ('LIGHT', 'CAMERA'):
+            bpy.data.objects.remove(o, do_unlink=True)
+    add_light('key', (5, -6, 12), 1900, 8)
+    add_light('fill', (-8, -4, 4), 500, 8, (0.85, 0.9, 1.0), shadow=False)
+    add_light('rim', (-2, 9, 7), 1100, 6, (0.75, 0.85, 1.0), shadow=False)
+    cam_data = bpy.data.cameras.new('dsa_cam')
+    cam_data.type = 'ORTHO'
+    cam_data.clip_end = 500
+    cam = bpy.data.objects.new('dsa_cam', cam_data)
+    scene.collection.objects.link(cam)
+    scene.camera = cam
+    print('engine:', scene.render.engine, 'device:', getattr(scene.cycles, 'device', '-') if scene.render.engine == 'CYCLES' else '-')
+    return scene
 
 
 def lin(hexstr):
@@ -179,26 +214,19 @@ def text(body, x=0, y=0, z=0, size=2.0, col='white', extrude=0.22):
 
 
 # --------------------------------------------------------------- lights, camera
-def add_light(name, loc, energy, size, color=(1, 1, 1)):
+def add_light(name, loc, energy, size, color=(1, 1, 1), shadow=True):
     ld = bpy.data.lights.new(name, 'AREA')
     ld.energy = energy
     ld.size = size
     ld.color = color
+    if hasattr(ld, 'use_shadow'):
+        ld.use_shadow = shadow
+    if hasattr(ld, 'cycles') and hasattr(ld.cycles, 'cast_shadow'):
+        ld.cycles.cast_shadow = shadow
     lo = bpy.data.objects.new(name, ld)
     scene.collection.objects.link(lo)
     lo.location = loc
     lo.rotation_euler = (-Vector(loc)).to_track_quat('-Z', 'Y').to_euler()
-
-
-add_light('key', (6, -7, 9), 1500, 6)
-add_light('fill', (-8, -4, 4), 500, 8, (0.85, 0.9, 1.0))
-add_light('rim', (-2, 9, 7), 1100, 6, (0.75, 0.85, 1.0))
-cam_data = bpy.data.cameras.new('cam')
-cam_data.type = 'ORTHO'
-cam_data.clip_end = 500
-cam = bpy.data.objects.new('cam', cam_data)
-scene.collection.objects.link(cam)
-scene.camera = cam
 
 
 def frame(direction=(1.0, -1.25, 0.95), margin=1.18):
@@ -208,7 +236,7 @@ def frame(direction=(1.0, -1.25, 0.95), margin=1.18):
     pts = []
     dg = bpy.context.evaluated_depsgraph_get()
     for o in scene.objects:
-        if o.type not in ('MESH', 'FONT'):
+        if o.type not in ('MESH', 'FONT') or o.name.startswith('dsa_floor'):
             continue
         oe = o.evaluated_get(dg)
         pts += [oe.matrix_world @ Vector(c) for c in oe.bound_box]
@@ -456,15 +484,40 @@ ICONS = {
 }
 FRONTAL = {'lc75', 'top150', 'trees', 'tries', 'backtracking', 'interview'}
 
-for name, build in ICONS.items():
-    if ONLY and name not in ONLY:
-        continue
+
+def add_floor():
+    """Invisible floor under the icon that only receives shadows (Cycles shadow catcher)."""
+    if scene.render.engine != 'CYCLES':
+        return
+    dg = bpy.context.evaluated_depsgraph_get()
+    zmin = min((o.evaluated_get(dg).matrix_world @ Vector(c)).z
+               for o in scene.objects if o.type in ('MESH', 'FONT') for c in o.evaluated_get(dg).bound_box)
+    bpy.ops.mesh.primitive_plane_add(size=80, location=(0, 0, zmin))
+    floor = bpy.context.active_object
+    floor.name = 'dsa_floor'
+    floor.is_shadow_catcher = True
+
+
+def render_icon(name):
     clear()
-    build()
+    ICONS[name]()
+    add_floor()
     big = name in ('lc75', 'top150')
     frame((0.55, -1.0, 0.42) if name in FRONTAL else (1.0, -1.25, 0.95), margin=1.12 if big else 1.16)
     scene.render.resolution_x = scene.render.resolution_y = 768 if big else 512
     scene.render.filepath = os.path.join(OUT, name + '.png')
     bpy.ops.render.render(write_still=True)
     print('rendered', name)
-print('done')
+
+
+def render_all(names=None):
+    for name in (names or ICONS):
+        if ONLY and name not in ONLY:
+            continue
+        render_icon(name)
+    print('done')
+
+
+if __name__ == '__main__':
+    setup(live=not bpy.app.background)
+    render_all()
