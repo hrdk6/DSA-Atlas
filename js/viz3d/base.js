@@ -87,8 +87,12 @@
       return Object.assign(ctx, { fallback: true, destroy: noop, say: (x) => fig && fig.say(x), stat: noop, button: () => h('span'), run: noop });
     }
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, o.hero ? 1.25 : 1.75));
+    const renderer = new THREE.WebGLRenderer({
+      antialias: !o.hero,
+      alpha: true,
+      powerPreference: o.hero ? 'low-power' : 'high-performance'
+    });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, o.hero ? 1 : 1.75));
     const useShadows = o.ground !== false && !o.hero;
     renderer.shadowMap.enabled = useShadows;
     if (useShadows) renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -281,22 +285,12 @@
     /* -- render loop -- */
     let visible = true, raf = 0, idleFrames = 0, usingTimer = false;
     const tickers = new Set();
-    /* Hero scenes throttle to ~24fps when auto-rotating without user interaction;
-       interactive figures run at full 60fps when tweening/dragging. */
-    const heroThrottle = o.hero ? 42 : 0; /* ms between frames; 0 = full speed */
-    let lastFrameTime = 0;
     /* D3.forceTimers drives frames from setTimeout (used for automated testing in hidden windows). */
-    function schedule() { usingTimer = !!D3.forceTimers; raf = usingTimer ? setTimeout(() => frame(performance.now()), heroThrottle || 16) : requestAnimationFrame(frame); }
+    function schedule() { usingTimer = !!D3.forceTimers; raf = usingTimer ? setTimeout(() => frame(performance.now()), 16) : requestAnimationFrame(frame); }
     function unschedule() { if (!raf) return; if (usingTimer) clearTimeout(raf); else cancelAnimationFrame(raf); raf = 0; }
     function frame(now) {
       raf = 0;
       if (!ctx.alive) return;
-      /* Throttle hero frames: skip if not enough time elapsed */
-      if (heroThrottle && !tweens.length && now - lastFrameTime < heroThrottle) {
-        if (visible && !document.hidden) schedule();
-        return;
-      }
-      lastFrameTime = now;
       stepTweens(now);
       for (const fn of tickers) fn(now);
       const moved = controls.update();

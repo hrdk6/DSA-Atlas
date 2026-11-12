@@ -409,7 +409,7 @@
     const tp = DSA.plans.top150 ? store.counts(planIds(DSA.plans.top150)) : { solved: 0, total: 150 };
     const last = store.lastVisit();
     const firstLesson = lessons[0];
-    const stage = h('div', { class: 'hero-stage' }, h('div', { class: 'hero-tag' }, 'Live · breadth-first search in 3D · drag to orbit'));
+    const stage = h('div', { class: 'hero-stage' }, h('div', { class: 'hero-tag' }, 'Interactive · BFS in 3D · click any node or drag to orbit'));
     const hero = h('section', { class: 'home-hero' },
       h('div', { class: 'hero-copy' },
         h('div', { class: 'eyebrow' }, 'Data structures & algorithms · in Python'),

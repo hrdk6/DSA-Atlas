@@ -36,7 +36,7 @@
     o = o || {};
     const D3 = DSA.d3;
     const hero = !!o.hero;
-    const ctx = D3.stage(container, Object.assign({ title: 'Graph search: BFS ripples outward, DFS dives deep', camera: hero ? [0, 4.8, 15.4] : [0, 5.2, 13.5], target: [0, 2.8, 0], height: 470, autoRotate: hero ? 0.9 : 0, ground: !hero }, o));
+    const ctx = D3.stage(container, Object.assign({ title: 'Graph search: BFS ripples outward, DFS dives deep', camera: hero ? [0, 4.8, 15.4] : [0, 5.2, 13.5], target: [0, 2.8, 0], height: 470, autoRotate: 0, ground: !hero }, o));
     if (ctx.fallback) return ctx;
     const { THREE, PAL } = ctx;
     let G = null, nodes = [], edgeObjs = {}, start = 0, steps = 0, marks = [];
@@ -155,21 +155,15 @@
     if (hero) {
       build(11);
       let alive = true;
-      (async function loop() {
-        while (alive && ctx.alive) {
-          if (!ctx.isVisible()) {
-            await ctx.wait(500);
-            continue;
-          }
-          await bfs();
-          await ctx.wait(1800);
-          if (!ctx.alive) return;
-          start = Math.floor(Math.random() * G.n);
-          resetColors(); clearMarks();
-          await ctx.wait(600);
-          if (Math.random() < 0.3) build(10 + Math.floor(Math.random() * 3));
-        }
+      (async function initRun() {
+        await ctx.wait(600);
+        if (alive && ctx.alive) await bfs();
       })();
+      ctx.onPick(() => nodes, (obj) => {
+        if (ctx.busy) return;
+        start = obj.userData.i;
+        bfs();
+      });
       const d = ctx.destroy;
       ctx.destroy = () => { alive = false; d(); };
       return ctx;
