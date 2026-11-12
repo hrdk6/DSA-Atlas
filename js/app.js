@@ -28,8 +28,16 @@
   }
 
   /* ------------------------------------------------------------- sidebar */
-  function renderSidebar(active) {
+  let sidebarBuilt = false;
+  function renderSidebar(active, force) {
     const sb = document.getElementById('sidebar');
+    if (sidebarBuilt && !force) {
+      sb.querySelectorAll('.sb-link').forEach((a) => {
+        a.classList.toggle('active', a.getAttribute('href') === active);
+      });
+      return;
+    }
+    sidebarBuilt = true;
     sb.innerHTML = '';
     sb.append(
       h('a', { class: 'sb-brand', href: '#/' , html: DSA.logo + '<div><div class="sb-title">DSA Atlas</div><div class="sb-sub">Python · visual · interviews</div></div>' }),
@@ -211,7 +219,7 @@
       doneBtn.className = 'btn ' + (d ? 'on' : 'primary');
       doneBtn.innerHTML = d ? DSA.icon('check') + '<span>Completed</span>' : '<span>Mark lesson complete</span>';
     };
-    doneBtn.onclick = () => { store.setLessonDone(id, !store.lessonDone(id)); paintDone(); renderSidebar('#/learn/' + id); };
+    doneBtn.onclick = () => { store.setLessonDone(id, !store.lessonDone(id)); paintDone(); renderSidebar('#/learn/' + id, true); };
     paintDone();
     const main = h('div', { class: 'lesson-main' },
       h('header', { class: 'lesson-head' },
@@ -339,8 +347,8 @@
       statusBtns.innerHTML = '';
       const st = store.problem(p.id);
       statusBtns.append(
-        h('button', { class: 'btn sm ' + (st === 'solved' ? 'on' : ''), type: 'button', onclick: () => { store.setProblem(p.id, st === 'solved' ? null : 'solved'); paintStatus(); renderSidebar(currentActive); }, html: DSA.icon('check') + '<span>' + (st === 'solved' ? 'Solved' : 'Mark solved') + '</span>' }),
-        h('button', { class: 'btn sm ' + (st === 'review' ? 'on-review' : ''), type: 'button', onclick: () => { store.setProblem(p.id, st === 'review' ? null : 'review'); paintStatus(); renderSidebar(currentActive); }, html: DSA.icon('flag') + '<span>' + (st === 'review' ? 'Marked for review' : 'Review later') + '</span>' }),
+        h('button', { class: 'btn sm ' + (st === 'solved' ? 'on' : ''), type: 'button', onclick: () => { store.setProblem(p.id, st === 'solved' ? null : 'solved'); paintStatus(); renderSidebar(currentActive, true); }, html: DSA.icon('check') + '<span>' + (st === 'solved' ? 'Solved' : 'Mark solved') + '</span>' }),
+        h('button', { class: 'btn sm ' + (st === 'review' ? 'on-review' : ''), type: 'button', onclick: () => { store.setProblem(p.id, st === 'review' ? null : 'review'); paintStatus(); renderSidebar(currentActive, true); }, html: DSA.icon('flag') + '<span>' + (st === 'review' ? 'Marked for review' : 'Review later') + '</span>' }),
         h('a', { class: 'btn sm ghost', href: 'https://leetcode.com/problems/' + p.slug + '/', target: '_blank', rel: 'noopener', html: DSA.icon('external') + '<span>Solve on LeetCode</span>' }));
     }
     paintStatus();
@@ -585,6 +593,6 @@
   window.addEventListener('hashchange', route);
   initTopbar();
   route();
-  DSA.renderSidebar = () => renderSidebar(currentActive);
+  DSA.renderSidebar = () => renderSidebar(currentActive, true);
   DSA.openPalette = openPalette;
 })();

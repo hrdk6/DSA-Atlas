@@ -40,7 +40,7 @@
 .fig-title{font:800 17px/1.25 var(--font-display);font-stretch:106%;color:var(--fg)}
 .fig-hint{margin-left:auto;font:500 11.5px/1.2 var(--font-mono);color:var(--muted)}
 .fig-stage{position:relative;height:420px;margin:0 12px;border-radius:10px;border:1px solid var(--line);overflow:hidden;
-  background:radial-gradient(110% 85% at 50% 0%,var(--ink-soft),transparent 62%),var(--bg-2);touch-action:none}
+  background:radial-gradient(110% 85% at 50% 0%,var(--ink-soft),transparent 62%),var(--bg-2);touch-action:none;contain:layout style paint}
 .fig-stage canvas{display:block;width:100%!important;height:100%!important;outline:none}
 .fig-stats{position:absolute;right:10px;top:10px;display:grid;gap:5px;justify-items:end;pointer-events:none;z-index:2}
 .fig-stat{font:600 11.5px/1 var(--font-mono);padding:5px 8px;border-radius:7px;background:color-mix(in srgb,var(--bg) 78%,transparent);border:1px solid var(--line);color:var(--fg-2);font-variant-numeric:tabular-nums}

@@ -281,12 +281,22 @@
     /* -- render loop -- */
     let visible = true, raf = 0, idleFrames = 0, usingTimer = false;
     const tickers = new Set();
+    /* Hero scenes throttle to ~24fps when auto-rotating without user interaction;
+       interactive figures run at full 60fps when tweening/dragging. */
+    const heroThrottle = o.hero ? 42 : 0; /* ms between frames; 0 = full speed */
+    let lastFrameTime = 0;
     /* D3.forceTimers drives frames from setTimeout (used for automated testing in hidden windows). */
-    function schedule() { usingTimer = !!D3.forceTimers; raf = usingTimer ? setTimeout(() => frame(performance.now()), 16) : requestAnimationFrame(frame); }
+    function schedule() { usingTimer = !!D3.forceTimers; raf = usingTimer ? setTimeout(() => frame(performance.now()), heroThrottle || 16) : requestAnimationFrame(frame); }
     function unschedule() { if (!raf) return; if (usingTimer) clearTimeout(raf); else cancelAnimationFrame(raf); raf = 0; }
     function frame(now) {
       raf = 0;
       if (!ctx.alive) return;
+      /* Throttle hero frames: skip if not enough time elapsed */
+      if (heroThrottle && !tweens.length && now - lastFrameTime < heroThrottle) {
+        if (visible && !document.hidden) schedule();
+        return;
+      }
+      lastFrameTime = now;
       stepTweens(now);
       for (const fn of tickers) fn(now);
       const moved = controls.update();
