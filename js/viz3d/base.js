@@ -88,9 +88,10 @@
     }
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, o.hero ? 1.25 : 1.75));
+    const useShadows = o.ground !== false && !o.hero;
+    renderer.shadowMap.enabled = useShadows;
+    if (useShadows) renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.setClearColor(0x000000, 0);
     stageEl.prepend(renderer.domElement);
 
@@ -113,11 +114,13 @@
     scene.add(new THREE.HemisphereLight(0xe4ecff, 0x2a3350, 0.72));
     const key = new THREE.DirectionalLight(0xffffff, 0.82);
     key.position.set(7, 14, 9);
-    key.castShadow = true;
-    key.shadow.mapSize.set(1024, 1024);
-    const sc = key.shadow.camera; sc.left = -22; sc.right = 22; sc.top = 22; sc.bottom = -22; sc.near = 1; sc.far = 60;
-    key.shadow.bias = -0.0006;
-    key.shadow.radius = 4;
+    key.castShadow = useShadows;
+    if (useShadows) {
+      key.shadow.mapSize.set(1024, 1024);
+      const sc = key.shadow.camera; sc.left = -22; sc.right = 22; sc.top = 22; sc.bottom = -22; sc.near = 1; sc.far = 60;
+      key.shadow.bias = -0.0006;
+      key.shadow.radius = 4;
+    }
     scene.add(key);
     const rim = new THREE.DirectionalLight(0x8fb2ff, 0.38);
     rim.position.set(-9, 7, -10);
@@ -289,13 +292,18 @@
       const moved = controls.update();
       renderer.render(scene, camera);
       if (tweens.length || tickers.size || moved || controls.autoRotate) idleFrames = 0; else idleFrames++;
-      if (visible && idleFrames < 90) schedule();
+      if (visible && !document.hidden && idleFrames < 90) schedule();
     }
     function kick() {
       idleFrames = 0;
       if (D3.forceTimers && raf && !usingTimer) unschedule();
-      if (!raf && visible && ctx.alive) schedule();
+      if (!raf && visible && !document.hidden && ctx.alive) schedule();
     }
+    function onVisChange() {
+      if (document.hidden) unschedule();
+      else if (visible && ctx.alive) kick();
+    }
+    document.addEventListener('visibilitychange', onVisChange);
     controls.addEventListener('start', kick);
     controls.addEventListener('change', kick);
     renderer.domElement.addEventListener('wheel', kick, { passive: true });
@@ -373,10 +381,22 @@
       return h('label', null, 'speed', r);
     }
 
+    function disposeObj(obj) {
+      if (!obj) return;
+      obj.traverse((child) => {
+        if (child.geometry && !Object.values(geoCache).includes(child.geometry)) child.geometry.dispose();
+        if (child.material) {
+          const ms = Array.isArray(child.material) ? child.material : [child.material];
+          for (const m of ms) { if (m.map) m.map.dispose(); m.dispose(); }
+        }
+      });
+    }
+
     function destroy() {
       if (!ctx.alive) return;
       ctx.alive = false;
       unschedule();
+      document.removeEventListener('visibilitychange', onVisChange);
       ro.disconnect();
       io.disconnect();
       for (const tw of tweens.splice(0)) tw.resolve();
@@ -397,6 +417,9 @@
       THREE, renderer, scene, camera, controls, root,
       tween, moveTo, scaleTo, colorTo, emissiveTo, wait, kick,
       label, block, ball, arrow, edge, curve, stdMat,
+      dispose: disposeObj,
+      remove: (...objs) => { for (const obj of objs) { if (!obj) continue; ctx.root.remove(obj); disposeObj(obj); } },
+      isVisible: () => visible && !document.hidden,
       onTick: (fn) => { tickers.add(fn); kick(); return () => tickers.delete(fn); },
       onPick: (objects, fn) => pickers.push({ objects, fn }),
       say: (html, cx) => fig && fig.say(html, cx),

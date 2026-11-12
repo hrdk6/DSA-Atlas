@@ -10,12 +10,16 @@
   const lessonList = () => DSA.lessonOrder.map((id) => DSA.lessons[id]);
   const chapterNo = (id) => String(DSA.lessonOrder.indexOf(id) + 1).padStart(2, '0');
   const planIds = (plan) => plan.categories.flatMap((c) => c.ids);
-  const ART = { lc75: 'assets/art/lc75.png', top150: 'assets/art/top150.png' };
+  const ART = { lc75: 'assets/art/lc75.webp', top150: 'assets/art/top150.webp' };
 
-  /* Images rendered in Blender live in assets/art; fall back to an SVG mark if missing. */
+  /* Images rendered in Blender live in assets/art; fall back to PNG, then an SVG mark if missing. */
   function art(src, cls, fallbackIcon) {
     const img = h('img', { class: cls, src, alt: '', loading: 'lazy', decoding: 'async' });
     img.addEventListener('error', () => {
+      if (img.src.endsWith('.webp')) {
+        img.src = src.replace(/\.webp$/, '.png');
+        return;
+      }
       const span = h('span', { class: cls + ' fallback', html: DSA.icon(fallbackIcon) });
       span.querySelector('svg').style.cssText = 'width:100%;height:auto;color:rgba(255,255,255,.35)';
       img.replaceWith(span);
@@ -457,8 +461,14 @@
     });
   }
   function topicArt(L) {
-    const img = h('img', { src: 'assets/art/' + L.id + '.png', alt: '', loading: 'lazy', decoding: 'async' });
-    img.addEventListener('error', () => { img.replaceWith(h('span', { html: DSA.icon(L.icon || L.id) })); });
+    const img = h('img', { src: 'assets/art/' + L.id + '.webp', alt: '', loading: 'lazy', decoding: 'async' });
+    img.addEventListener('error', () => {
+      if (img.src.endsWith('.webp')) {
+        img.src = 'assets/art/' + L.id + '.png';
+        return;
+      }
+      img.replaceWith(h('span', { html: DSA.icon(L.icon || L.id) }));
+    });
     return img;
   }
 

@@ -43,8 +43,8 @@
     const ek = (a, b) => (a < b ? a + '-' + b : b + '-' + a);
 
     function build(n) {
-      for (const nd of nodes) ctx.root.remove(nd);
-      for (const k in edgeObjs) ctx.root.remove(edgeObjs[k]);
+      for (const nd of nodes) ctx.remove(nd);
+      for (const k in edgeObjs) ctx.remove(edgeObjs[k]);
       clearMarks();
       nodes = []; edgeObjs = {};
       G = randomGraph(n);
@@ -63,7 +63,7 @@
       resetColors();
       ctx.kick();
     }
-    function clearMarks() { for (const m of marks) ctx.root.remove(m); marks = []; }
+    function clearMarks() { for (const m of marks) ctx.remove(m); marks = []; }
     function resetColors() {
       for (const nd of nodes) { nd.userData.mat.color.set(PAL.ink); nd.scale.set(1, 1, 1); }
       for (const k in edgeObjs) { edgeObjs[k].userData.mat.color.set(PAL.edge); edgeObjs[k].scale.set(1, 1, 1); }
@@ -157,12 +157,16 @@
       let alive = true;
       (async function loop() {
         while (alive && ctx.alive) {
+          if (!ctx.isVisible()) {
+            await ctx.wait(500);
+            continue;
+          }
           await bfs();
-          await ctx.wait(1600);
+          await ctx.wait(1800);
           if (!ctx.alive) return;
           start = Math.floor(Math.random() * G.n);
           resetColors(); clearMarks();
-          await ctx.wait(500);
+          await ctx.wait(600);
           if (Math.random() < 0.3) build(10 + Math.floor(Math.random() * 3));
         }
       })();
